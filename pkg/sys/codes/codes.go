@@ -3,7 +3,7 @@ package codes
 import "net/http"
 
 // Code определяет тип кода ошибки
-type Code int32
+type Code int
 
 // HTTP-коды ошибок, соответствующие стандартным кодам HTTP.
 const (
