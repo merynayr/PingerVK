@@ -2,11 +2,10 @@ package model
 
 import "time"
 
-// Pings модель пингера в сервисном слое
+// Pings — модель пингера в сервисном слое
 type Pings struct {
-	ID           int64
-	IP           string
-	Status       bool
-	ResponseTime time.Time
-	LastSuccess  time.Time
+	IP           string    `json:"ip" binding:"required"`
+	Status       bool      `json:"status"`
+	ResponseTime float64   `json:"response_time"`
+	LastSuccess  time.Time `json:"last_success"`
 }
