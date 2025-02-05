@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/merynayr/PingerVK/pkg/sys"
 	"github.com/merynayr/PingerVK/pkg/sys/codes"
 )
 
@@ -12,15 +11,10 @@ import (
 func (api *API) Get(ctx *gin.Context) {
 	pingObj, err := api.pingService.Get(ctx)
 	if err != nil {
-		if commonErr := sys.GetCommonError(err); commonErr != nil {
-			ctx.JSON(int(codes.InternalServerError), gin.H{
-				"error": fmt.Sprintf("Code: %v, Message: %v", commonErr.Code(), commonErr.Error()),
-			})
-		} else {
-			ctx.JSON(int(codes.InternalServerError), gin.H{
-				"error": fmt.Sprintf("Failed to fetch ping data: %v", err),
-			})
-		}
+		_ = ctx.Error(err)
+		ctx.JSON(int(codes.InternalServerError), gin.H{
+			"error": fmt.Sprintf("Failed to fetch ping data: %v", err),
+		})
 		return
 	}
 
