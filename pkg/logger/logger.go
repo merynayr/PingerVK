@@ -61,3 +61,14 @@ func Error(msg string, args ...any) {
 func With(args ...any) *slog.Logger {
 	return globalLogger.With(args...)
 }
+
+// An Attr is a key-value pair.
+type Attr struct {
+	Key   string
+	Value string
+}
+
+// String обертка над методом
+func String(key, value string) Attr {
+	return Attr{key, value}
+}
