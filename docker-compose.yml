@@ -1,0 +1,53 @@
+volumes:
+  postgres_volume_local:
+
+services:
+  # Сервис для PostgreSQL
+  pg-local:
+    container_name: postgres
+    build:
+      context: ./backend 
+      dockerfile: postgres.Dockerfile
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DB}
+    ports:
+      - "${DB_PORT}:${DB_PORT_INTERNAL}" 
+    volumes:
+      - postgres_volume_local:/var/lib/postgresql/data 
+
+  # Сервис для миграций
+  migrator-local:
+    container_name: migrator
+    build:
+      context: ./backend 
+      dockerfile: migration.Dockerfile
+    restart: on-failure
+    environment:
+      DB_HOST: pg-local
+
+  # Сервис для приложения
+  backend:
+    container_name: backend
+    build:
+      context: ./backend 
+      dockerfile: Dockerfile 
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"  
+    depends_on:
+      - pg-local
+
+  # Сервис для pinger
+  pinger:
+    container_name: pinger
+    network_mode: host
+    build:
+      context: ./pinger
+      dockerfile: Dockerfile 
+    ports:
+      - "8080:8080"  
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - backend
