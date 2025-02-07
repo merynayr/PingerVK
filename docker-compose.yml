@@ -56,29 +56,31 @@ services:
       - backend
 
   # Сервис для frontend
-  # frontend:
-  #   container_name: frontend
-  #   build:
-  #     context: ./frontend  
-  #     dockerfile: Dockerfile 
-  #   ports:
-  #     - "3000:3000" 
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - my_network
-  #   restart: always
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend  
+      dockerfile: Dockerfile 
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+    networks:
+      - my_network
+    restart: always
 
   # Сервис для nginx
   nginx:
     container_name: nginx
-    image: nginx:latest
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    image: nginx:stable-alpine
     ports:
       - "90:80"
+    volumes:
+      - './nginx/nginx.conf:/etc/nginx/nginx.conf'
+      - '/etc/letsencrypt:/etc/letsencrypt'
     depends_on:
       - backend
+      - frontend
     networks:
       - my_network
 
