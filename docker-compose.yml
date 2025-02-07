@@ -1,6 +1,3 @@
-volumes:
-  postgres_volume_local:
-
 services:
   # Сервис для PostgreSQL
   pg-local:
@@ -15,7 +12,9 @@ services:
     ports:
       - "${DB_PORT}:${DB_PORT_INTERNAL}" 
     volumes:
-      - postgres_volume_local:/var/lib/postgresql/data 
+      - postgres_volume_local:/var/lib/postgresql/data
+    networks:
+      - my_network
 
   # Сервис для миграций
   migrator-local:
@@ -26,17 +25,21 @@ services:
     restart: on-failure
     environment:
       DB_HOST: pg-local
+    networks:
+      - my_network
 
   # Сервис для приложения
   backend:
     container_name: backend
     build:
       context: ./backend 
-      dockerfile: Dockerfile 
+      dockerfile: Dockerfile
     ports:
       - "${HTTP_PORT}:${HTTP_PORT}"  
     depends_on:
       - pg-local
+    networks:
+      - my_network
 
   # Сервис для pinger
   pinger:
@@ -44,10 +47,44 @@ services:
     network_mode: host
     build:
       context: ./pinger
-      dockerfile: Dockerfile 
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"  
+      - "50050:50050"  
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - backend
+
+  # Сервис для frontend
+  # frontend:
+  #   container_name: frontend
+  #   build:
+  #     context: ./frontend  
+  #     dockerfile: Dockerfile 
+  #   ports:
+  #     - "3000:3000" 
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - my_network
+  #   restart: always
+
+  # Сервис для nginx
+  nginx:
+    container_name: nginx
+    image: nginx:latest
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "90:80"
+    depends_on:
+      - backend
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge
+
+volumes:
+  postgres_volume_local:
