@@ -5,10 +5,6 @@ services:
     build:
       context: ./backend 
       dockerfile: postgres.Dockerfile
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_DB}
     ports:
       - "${DB_PORT}:${DB_PORT_INTERNAL}" 
     volumes:
@@ -34,8 +30,6 @@ services:
     build:
       context: ./backend 
       dockerfile: Dockerfile
-    ports:
-      - "${HTTP_PORT}:${HTTP_PORT}"  
     depends_on:
       - pg-local
     networks:
@@ -48,8 +42,6 @@ services:
     build:
       context: ./pinger
       dockerfile: Dockerfile
-    ports:
-      - "50050:50050"  
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
