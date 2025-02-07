@@ -143,7 +143,7 @@ func MonitorContainers(addres string) {
 
 // Функция отправки POST-запроса с данными контейнера
 func sendContainerStatus(container model.ContainerInfo, address string) error {
-	url := fmt.Sprintf("http://%s/ping", address)
+	url := address
 
 	data, err := json.Marshal(container)
 	if err != nil {
