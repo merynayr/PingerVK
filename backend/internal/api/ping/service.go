@@ -1,6 +1,8 @@
 package ping
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/merynayr/PingerVK/backend/internal/service"
 )
@@ -21,5 +23,10 @@ func NewAPI(pingService service.PingService) *API {
 // RegisterRoutes регистрирует маршруты
 func (api *API) RegisterRoutes(router *gin.Engine) {
 	router.GET("/ping", api.Get)
-	router.POST("/ping", api.Create)
+	router.GET("/health", api.Health)
+}
+
+// Health проверка состояния
+func (api *API) Health(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

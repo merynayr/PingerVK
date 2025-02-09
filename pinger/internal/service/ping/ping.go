@@ -1,15 +1,14 @@
 package ping
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"golang.org/x/net/icmp"
@@ -19,7 +18,7 @@ import (
 	"github.com/merynayr/PingerVK/pkg/logger"
 )
 
-// Функция пингования IP-адресов контейнеров
+// ping функция пингования IP-адресов контейнеров
 func ping(ip string) (time.Duration, error) {
 	conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
@@ -77,7 +76,7 @@ func ping(ip string) (time.Duration, error) {
 	return 0, fmt.Errorf("неожиданный ICMP тип ответа: %v", resp.Type)
 }
 
-// Функция получения IP-адресов контейнеров
+// getContainerIPs функция получения IP-адресов контейнеров
 func getContainerIPs() []model.ContainerInfo {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -117,58 +116,50 @@ func getContainerIPs() []model.ContainerInfo {
 }
 
 // MonitorContainers Главная функция мониторинга контейнеров
-func MonitorContainers(addres string) {
+func MonitorContainers() []model.ContainerInfo {
 	containers := getContainerIPs()
-	for _, container := range containers {
-		if container.Name == "pinger" {
+	for i := range containers {
+		if containers[i].Name == "pinger" {
+			containers[i].Status = true
 			continue
 		}
-		responseTime, err := ping(container.IPAddress)
+		responseTime, err := ping(containers[i].IPAddress)
 
 		if err != nil {
-			container.Status = false
+			containers[i].Status = false
 		} else {
-			container.Status = true
+			containers[i].Status = true
 		}
-		container.ResponseTime = responseTime
-		if container.Status {
-			container.LastSuccess = time.Now().UTC()
-		}
-		err = sendContainerStatus(container, addres)
-		if err != nil {
-			logger.Error("Ошибка отправки данных контейнера %s: %v", container.ID, err)
+		containers[i].ResponseTime = responseTime
+		if containers[i].Status {
+			containers[i].LastSuccess = time.Now().UTC()
 		}
 	}
+	return containers
 }
 
-// Функция отправки POST-запроса с данными контейнера
-func sendContainerStatus(container model.ContainerInfo, address string) error {
-	url := address
+// SendContainer функция отправки данных контейнера на backend
+func (s *srv) SendContainer(pingTopicName string) error {
+	containers := MonitorContainers()
 
-	data, err := json.Marshal(container)
-	if err != nil {
-		return fmt.Errorf("не удалось сериализовать данные контейнера: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
-	if err != nil {
-		return fmt.Errorf("ошибка при создании HTTP-запроса: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("ошибка при отправке POST-запроса: %v", err)
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("Ошибка при закрытии тела ответа: %v", err)
+	for _, container := range containers {
+		data, err := json.Marshal(container)
+		if err != nil {
+			return fmt.Errorf("не удалось сериализовать данные контейнера: %v", err)
 		}
-	}()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("неудачный статус ответа от сервера: %v", resp.Status)
+		msg := &sarama.ProducerMessage{
+			Topic:     pingTopicName,
+			Partition: int32(0),
+			Value:     sarama.StringEncoder(data),
+		}
+
+		res := s.kafkaProducer.SendMessage(msg)
+		if res.Err != nil {
+			logger.Error("failed to send message in Kafka", logger.With("error", err))
+		}
+
+		logger.Debug("message sent in Kafka", logger.With("container ip", container.IPAddress))
 	}
 
 	return nil
