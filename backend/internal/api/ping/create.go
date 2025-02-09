@@ -1,27 +1,28 @@
 package ping
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
+	"encoding/json"
+
 	"github.com/merynayr/PingerVK/backend/internal/model"
-	"github.com/merynayr/PingerVK/pkg/sys/codes"
+	"github.com/merynayr/PingerVK/pkg/logger"
 )
 
-// Create - отправляет запрос в сервисный слой на создание данных о пингах
-func (api *API) Create(ctx *gin.Context) {
+// Create - отправляет запрос в сервисный слой на создание данных о пингах и отправляет сообщение в Kafka
+func (api *API) Create(message []byte) {
 	var ping model.Pings
 
-	if err := ctx.ShouldBindJSON(&ping); err != nil {
-		_ = ctx.Error(err)
-		ctx.JSON(int(codes.BadRequest), gin.H{"error": "invalid request"})
-		return
-	}
-
-	id, err := api.pingService.Create(ctx, &ping)
+	// Привязываем JSON из запроса к модели Ping
+	err := json.Unmarshal(message, &ping)
 	if err != nil {
-		_ = ctx.Error(err)
-		ctx.JSON(int(codes.InternalServerError), gin.H{"error": "failed to create ping"})
+		logger.With("error", err).Error("Failed to unmarshal Kafka message")
 		return
 	}
 
-	ctx.JSON(int(codes.OK), gin.H{"id": id})
+	// Создаем пинг в сервисном слое
+	_, err = api.pingService.Create(context.Background(), &ping)
+	if err != nil {
+		logger.Error("failed to create ping")
+		return
+	}
 }

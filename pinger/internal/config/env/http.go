@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	backendApiEnvName = "BACKEND_API_URL"
+	backendAPIEnvName = "BACKEND_API_URL"
 )
 
 type httpConfig struct {
@@ -18,7 +18,7 @@ type httpConfig struct {
 
 // NewHTTPConfig returns new http-server config
 func NewHTTPConfig() (config.HTTPConfig, error) {
-	address := os.Getenv(backendApiEnvName)
+	address := os.Getenv(backendAPIEnvName)
 	if len(address) == 0 {
 		return nil, errors.New("http port not found")
 	}

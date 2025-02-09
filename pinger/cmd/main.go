@@ -15,7 +15,7 @@ func main() {
 		logger.Error("failed to init app: %s", err.Error())
 	}
 
-	err = a.Run()
+	err = a.Run(ctx)
 	if err != nil {
 		logger.Error("failed to run app: %s", err.Error())
 	}

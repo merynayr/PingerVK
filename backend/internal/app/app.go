@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/merynayr/PingerVK/backend/internal/config"
 	"github.com/merynayr/PingerVK/pkg/closer"
 	"github.com/merynayr/PingerVK/pkg/logger"
@@ -48,7 +49,7 @@ func (a *App) Run() error {
 	}()
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
@@ -57,6 +58,13 @@ func (a *App) Run() error {
 		if err != nil {
 			log.Fatalf("failed to run HTTP server: %v", err)
 		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		a.runKafkaConsumer()
+
 	}()
 
 	wg.Wait()
@@ -70,6 +78,7 @@ func (a *App) initDeps(ctx context.Context) error {
 		a.initConfig,
 		a.initServiceProvider,
 		a.initHTTPServer,
+		a.initKafkaConsumer,
 	}
 
 	for _, f := range inits {
@@ -130,4 +139,24 @@ func (a *App) runHTTPServer() error {
 	}
 
 	return nil
+}
+
+func (a *App) initKafkaConsumer(_ context.Context) error {
+
+	a.serviceProvider.kafkaConsumer = a.serviceProvider.KafkaConsumer(context.Background())
+
+	return nil
+}
+
+func (a *App) runKafkaConsumer() {
+	handler := func(msg *sarama.ConsumerMessage) error {
+		log.Printf("Получено сообщение: %s", string(msg.Value))
+		a.serviceProvider.pingAPI.Create(msg.Value)
+		return nil
+	}
+
+	err := a.serviceProvider.KafkaConsumer(context.Background()).Consume(context.Background(), a.serviceProvider.KafkaConsumerConfig().Topics(), handler)
+	if err != nil {
+		log.Fatalf("Ошибка запуска консьюмера: %v", err)
+	}
 }

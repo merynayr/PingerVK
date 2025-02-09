@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/merynayr/PingerVK/backend/internal/client/kafka"
+	"github.com/merynayr/PingerVK/backend/internal/client/kafka/consumer"
 	"github.com/merynayr/PingerVK/backend/internal/config"
 	"github.com/merynayr/PingerVK/backend/internal/config/env"
 	"github.com/merynayr/PingerVK/backend/internal/repository"
@@ -22,12 +24,15 @@ import (
 
 // Структура приложения со всеми зависимости
 type serviceProvider struct {
-	pgConfig     config.PGConfig
-	httpConfig   config.HTTPConfig
-	loggerConfig config.LoggerConfig
+	pgConfig            config.PGConfig
+	httpConfig          config.HTTPConfig
+	loggerConfig        config.LoggerConfig
+	kafkaConsumerConfig config.KafkaConsumerConfig
 
 	dbClient  db.Client
 	txManager db.TxManager
+
+	kafkaConsumer kafka.Consumer
 
 	pingRepository repository.PingRepository
 	pingService    service.PingService
@@ -101,6 +106,33 @@ func (s *serviceProvider) TxManager(ctx context.Context) db.TxManager {
 	}
 
 	return s.txManager
+}
+
+func (s *serviceProvider) KafkaConsumerConfig() config.KafkaConsumerConfig {
+	if s.kafkaConsumerConfig == nil {
+		cfg, err := env.NewKafkaConsumerConfig()
+		if err != nil {
+			log.Fatalf("failed to get kafka consumer config: %s", err)
+		}
+
+		s.kafkaConsumerConfig = cfg
+	}
+
+	return s.kafkaConsumerConfig
+}
+
+func (s *serviceProvider) KafkaConsumer(_ context.Context) kafka.Consumer {
+	if s.kafkaConsumer == nil {
+		p, err := consumer.New(s.KafkaConsumerConfig().Brokers(), s.KafkaConsumerConfig().Group(), s.KafkaConsumerConfig().Config())
+		if err != nil {
+			log.Fatalf("failed to create kafka consumer: %v", err)
+		}
+
+		closer.Add(p.Close)
+		s.kafkaConsumer = p
+	}
+
+	return s.kafkaConsumer
 }
 
 func (s *serviceProvider) PingRepository(ctx context.Context) repository.PingRepository {

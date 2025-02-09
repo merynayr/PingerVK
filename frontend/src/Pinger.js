@@ -27,10 +27,10 @@ const PingTable = () => {
   }, [apiUrl]);
   
   useEffect(() => {
-    fetchData(); // Вызываем один раз при монтировании
-    const intervalId = setInterval(fetchData, 10000); // Каждые 10 секунд
+    fetchData(); 
+    const intervalId = setInterval(fetchData, 10000);
     return () => clearInterval(intervalId);
-  }, [fetchData]); // Теперь зависимость `fetchData` не меняется
+  }, [fetchData]);
   
   const handleMouseDown = (e, column) => {
     const startX = e.clientX;

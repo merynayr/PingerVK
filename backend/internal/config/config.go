@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/IBM/sarama"
 	"github.com/joho/godotenv"
 )
 
@@ -28,4 +29,12 @@ type HTTPConfig interface {
 // LoggerConfig интерфейс конфига логгера
 type LoggerConfig interface {
 	Level() string
+}
+
+// KafkaConsumerConfig интерфейс конфига продюсера kafka
+type KafkaConsumerConfig interface {
+	Brokers() []string
+	Topics() []string
+	Group() string
+	Config() *sarama.Config
 }

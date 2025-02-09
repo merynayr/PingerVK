@@ -1,2 +1,4 @@
 /backend/bin
 /backend/logs
+/pinger/logs
+.vscode
